@@ -51,17 +51,6 @@ html,body{
   display:block;
   background:#111;
 }
-.label{
-  position:absolute;
-  left:10px;
-  bottom:10px;
-  background:rgba(0,0,0,0.7);
-  color:#fff;
-  padding:6px 10px;
-  border-radius:10px;
-  font-size:13px;
-  z-index:5;
-}
 .error{
   position:absolute;
   inset:0;
@@ -100,7 +89,7 @@ const landscapePhotos = [
 
 const portraitVideos = [
   "pv1","pv2","pv3","pv4","pv5","pv6","pv7","pv8","pv9","pv10",
-  "pv11","pv12","pv13","pv14","pv15","pv16","pv17","pv18","pv19"
+  "pv11","pv12","pv13","pv14","pv15","pv16","pv17","pv18"
 ];
 
 const landscapeVideos = ["lv1","lv2","lv3"];
@@ -108,17 +97,13 @@ const landscapeVideos = ["lv1","lv2","lv3"];
 const imageExts = [".jpg",".jpeg",".JPG",".JPEG"];
 const videoExts = [".mp4",".MP4",".mov",".MOV"];
 
-const media = [
-  ...portraitPhotos.map(x => ({type:"image", base:x})),
-  ...landscapePhotos.map(x => ({type:"image", base:x})),
-  ...portraitVideos.map(x => ({type:"video", base:x})),
-  ...landscapeVideos.map(x => ({type:"video", base:x}))
-];
-
-function chunk(arr, size){
-  const out = [];
-  for(let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
-  return out;
+function shuffle(array){
+  const arr = [...array];
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 function loadImage(img, base){
@@ -160,7 +145,55 @@ function setupVideo(video, card, base){
   next();
 }
 
-const groups = chunk(media, 3);
+const photos = shuffle([
+  ...portraitPhotos.map(x => ({type:"image", base:x})),
+  ...landscapePhotos.map(x => ({type:"image", base:x}))
+]);
+
+const videos = shuffle([
+  ...portraitVideos.map(x => ({type:"video", base:x})),
+  ...landscapeVideos.map(x => ({type:"video", base:x}))
+]);
+
+function buildMixedSections(photos, videos){
+  const sections = [];
+  let photoIndex = 0;
+  let videoIndex = 0;
+
+  while(photoIndex < photos.length || videoIndex < videos.length){
+    const section = [];
+
+    if(videoIndex < videos.length){
+      section.push(videos[videoIndex++]);
+    }
+
+    while(section.length < 3 && photoIndex < photos.length){
+      section.push(photos[photoIndex++]);
+    }
+
+    while(section.length < 3 && photoIndex < photos.length){
+      section.push(photos[photoIndex++]);
+    }
+
+    while(section.length < 3 && videoIndex < videos.length && !section.some(item => item.type === "video")){
+      section.push(videos[videoIndex++]);
+    }
+
+    while(section.length < 3 && photoIndex < photos.length){
+      section.push(photos[photoIndex++]);
+    }
+
+    while(section.length < 3 && videoIndex < videos.length){
+      section.push(videos[videoIndex++]);
+    }
+
+    sections.push(shuffle(section));
+  }
+
+  return sections;
+}
+
+const groups = buildMixedSections(photos, videos);
 const body = document.body;
 
 groups.forEach(group => {
@@ -173,10 +206,6 @@ groups.forEach(group => {
   group.forEach(item => {
     const card = document.createElement("div");
     card.className = "media-card";
-
-    const label = document.createElement("div");
-    label.className = "label";
-    label.textContent = item.base;
 
     if(item.type === "image"){
       const img = document.createElement("img");
@@ -194,7 +223,7 @@ groups.forEach(group => {
 
       const error = document.createElement("div");
       error.className = "error";
-      error.textContent = item.base + " could not be decoded by this browser. The file likely needs conversion to H.264 MP4.";
+      error.textContent = item.base + " could not be decoded by this browser.";
 
       setupVideo(video, card, item.base);
 
@@ -202,7 +231,6 @@ groups.forEach(group => {
       card.appendChild(error);
     }
 
-    card.appendChild(label);
     grid.appendChild(card);
   });
 
