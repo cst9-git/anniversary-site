@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I Love Gaya ❤️</title>
+<style>
+*{box-sizing:border-box}
+html,body{
+  margin:0;
+  padding:0;
+  background:#000;
+  color:#fff;
+  font-family:Arial,sans-serif;
+  overflow-x:hidden;
+}
+.section{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+  opacity:0;
+  transition:opacity 1.2s ease;
+}
+.section.active{opacity:1}
+.media-grid{
+  width:100%;
+  max-width:1500px;
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:22px;
+}
+.media-card{
+  width:100%;
+  height:78vh;
+  background:#111;
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:0 0 24px rgba(255,255,255,0.14);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+.media-card img,
+.media-card video{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  background:#111;
+}
+.label{
+  position:absolute;
+  left:10px;
+  bottom:10px;
+  background:rgba(0,0,0,0.7);
+  color:#fff;
+  padding:6px 10px;
+  border-radius:10px;
+  font-size:13px;
+  z-index:5;
+}
+.error{
+  position:absolute;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:20px;
+  color:#ff8f8f;
+  background:rgba(0,0,0,0.88);
+  font-size:15px;
+  line-height:1.4;
+}
+.media-card.failed .error{
+  display:flex;
+}
+@media (max-width:950px){
+  .media-grid{grid-template-columns:1fr}
+  .media-card{height:78vh}
+}
+</style>
+</head>
+<body>
+
+<script>
+const portraitPhotos = [
+  "pp1","pp2","pp3","pp4","pp5","pp6","pp7","pp8","pp9","pp10",
+  "pp11","pp12","pp13","pp14","pp15","pp16","pp17","pp18","pp19","pp20",
+  "pp21","pp22","pp23","pp24","pp25","pp26","pp27","pp28"
+];
+
+const landscapePhotos = [
+  "lp1","lp2","lp3","lp4","lp5","lp6","lp7","lp8","lp9","lp10","lp11",
+  "lp12","lp13","lp14","lp15","lp16","lp17","lp18","lp19","lp20","lp21","lp22"
+];
+
+const portraitVideos = [
+  "pv1","pv2","pv3","pv4","pv5","pv6","pv7","pv8","pv9","pv10",
+  "pv11","pv12","pv13","pv14","pv15","pv16","pv17","pv18","pv19"
+];
+
+const landscapeVideos = ["lv1","lv2","lv3"];
+
+const imageExts = [".jpg",".jpeg",".JPG",".JPEG"];
+const videoExts = [".mp4",".MP4",".mov",".MOV"];
+
+const media = [
+  ...portraitPhotos.map(x => ({type:"image", base:x})),
+  ...landscapePhotos.map(x => ({type:"image", base:x})),
+  ...portraitVideos.map(x => ({type:"video", base:x})),
+  ...landscapeVideos.map(x => ({type:"video", base:x}))
+];
+
+function chunk(arr, size){
+  const out = [];
+  for(let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
+  return out;
+}
+
+function loadImage(img, base){
+  let i = 0;
+  function next(){
+    if(i >= imageExts.length){
+      img.style.display = "none";
+      return;
+    }
+    img.src = base + imageExts[i++];
+  }
+  img.onerror = next;
+  next();
+}
+
+function setupVideo(video, card, base){
+  let i = 0;
+  let working = false;
+
+  function next(){
+    if(i >= videoExts.length){
+      card.classList.add("failed");
+      return;
+    }
+    const src = base + videoExts[i++];
+    video.src = src;
+    video.load();
+  }
+
+  video.addEventListener("loadeddata", () => {
+    working = true;
+    card.classList.remove("failed");
+  });
+
+  video.addEventListener("error", () => {
+    if(!working) next();
+  });
+
+  next();
+}
+
+const groups = chunk(media, 3);
+const body = document.body;
+
+groups.forEach(group => {
+  const section = document.createElement("section");
+  section.className = "section";
+
+  const grid = document.createElement("div");
+  grid.className = "media-grid";
+
+  group.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "media-card";
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = item.base;
+
+    if(item.type === "image"){
+      const img = document.createElement("img");
+      img.alt = item.base;
+      loadImage(img, item.base);
+      card.appendChild(img);
+    } else {
+      const video = document.createElement("video");
+      video.muted = true;
+      video.loop = true;
+      video.autoplay = false;
+      video.playsInline = true;
+      video.controls = true;
+      video.preload = "metadata";
+
+      const error = document.createElement("div");
+      error.className = "error";
+      error.textContent = item.base + " could not be decoded by this browser. The file likely needs conversion to H.264 MP4.";
+
+      setupVideo(video, card, item.base);
+
+      card.appendChild(video);
+      card.appendChild(error);
+    }
+
+    card.appendChild(label);
+    grid.appendChild(card);
+  });
+
+  section.appendChild(grid);
+  body.appendChild(section);
+});
+
+const sections = document.querySelectorAll(".section");
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const videos = entry.target.querySelectorAll("video");
+
+    if(entry.isIntersecting){
+      entry.target.classList.add("active");
+      videos.forEach(v => {
+        const p = v.play();
+        if(p) p.catch(() => {});
+      });
+    } else {
+      entry.target.classList.remove("active");
+      videos.forEach(v => {
+        v.pause();
+        v.currentTime = 0;
+      });
+    }
+  });
+}, { threshold: 0.72 });
+
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
