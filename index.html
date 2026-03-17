@@ -11,8 +11,8 @@
 html,body{
   margin:0;
   padding:0;
-  background:#cfc4ff;
-  color:#222;
+  background:#000;
+  color:#fff;
   font-family:Arial,sans-serif;
   overflow-x:hidden;
 }
@@ -22,10 +22,15 @@ html,body{
   top:8px;
   left:10px;
   font-size:10px;
-  color:rgba(0,0,0,0.4);
+  color:rgba(255,255,255,0.35);
   z-index:9999;
   user-select:none;
   pointer-events:none;
+}
+
+body.final-cursor,
+body.final-cursor *{
+  cursor:url("sponge.png") 16 16, auto;
 }
 
 .section{
@@ -51,10 +56,10 @@ html,body{
 .media-card{
   width:100%;
   height:78vh;
-  background:#fff;
+  background:#111;
   border-radius:18px;
   overflow:hidden;
-  box-shadow:0 10px 30px rgba(0,0,0,0.15);
+  box-shadow:0 0 24px rgba(255,255,255,0.14);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -66,7 +71,7 @@ html,body{
   width:100%;
   height:100%;
   object-fit:contain;
-  background:#fff;
+  background:#111;
 }
 
 .error{
@@ -77,8 +82,8 @@ html,body{
   justify-content:center;
   text-align:center;
   padding:20px;
-  color:#ff4d4d;
-  background:rgba(255,255,255,0.9);
+  color:#ff8f8f;
+  background:rgba(0,0,0,0.88);
   font-size:14px;
 }
 
@@ -86,8 +91,39 @@ html,body{
   display:flex;
 }
 
+.final-section{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+  opacity:0;
+  transition:opacity 1.2s ease;
+}
+
+.final-section.active{
+  opacity:1;
+}
+
+.final-image-wrap{
+  width:100%;
+  max-width:900px;
+  height:80vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.final-image-wrap img{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  display:block;
+}
+
 @media (max-width:950px){
   .media-grid{grid-template-columns:1fr}
+  .media-card{height:78vh}
 }
 </style>
 </head>
@@ -95,6 +131,7 @@ html,body{
 <body>
 
 <div class="version-tag">v1.1.0</div>
+<audio id="belly-audio" src="belly.mp3" preload="auto"></audio>
 
 <script>
 const portraitPhotos = [
@@ -119,35 +156,52 @@ const landscapeVideos = ["lv1","lv2","lv3","lv4","lv5"];
 const imageExts = [".jpg",".jpeg",".JPG",".JPEG"];
 const videoExts = [".mp4",".MP4",".mov",".MOV"];
 
-function shuffle(arr){
-  return arr.sort(() => Math.random() - 0.5);
+function shuffle(array){
+  const arr = [...array];
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 function loadImage(img, base){
   let i = 0;
-  function tryNext(){
+  function next(){
     if(i >= imageExts.length){
-      img.style.display="none";
+      img.style.display = "none";
       return;
     }
     img.src = base + imageExts[i++];
   }
-  img.onerror = tryNext;
-  tryNext();
+  img.onerror = next;
+  next();
 }
 
 function setupVideo(video, card, base){
   let i = 0;
-  function tryNext(){
+  let working = false;
+
+  function next(){
     if(i >= videoExts.length){
       card.classList.add("failed");
       return;
     }
-    video.src = base + videoExts[i++];
+    const src = base + videoExts[i++];
+    video.src = src;
     video.load();
   }
-  video.onerror = tryNext;
-  tryNext();
+
+  video.addEventListener("loadeddata", () => {
+    working = true;
+    card.classList.remove("failed");
+  });
+
+  video.addEventListener("error", () => {
+    if(!working) next();
+  });
+
+  next();
 }
 
 const photos = shuffle([
@@ -160,21 +214,32 @@ const videos = shuffle([
   ...landscapeVideos.map(x => ({type:"video", base:x}))
 ]);
 
-function buildSections(){
+function buildMixedSections(photos, videos){
   const sections = [];
-  let p = 0, v = 0;
+  let photoIndex = 0;
+  let videoIndex = 0;
 
-  while(p < photos.length || v < videos.length){
+  while(photoIndex < photos.length || videoIndex < videos.length){
     const section = [];
 
-    if(v < videos.length) section.push(videos[v++]);
-
-    while(section.length < 3 && p < photos.length){
-      section.push(photos[p++]);
+    if(videoIndex < videos.length){
+      section.push(videos[videoIndex++]);
     }
 
-    while(section.length < 3 && v < videos.length && !section.some(x=>x.type==="video")){
-      section.push(videos[v++]);
+    while(section.length < 3 && photoIndex < photos.length){
+      section.push(photos[photoIndex++]);
+    }
+
+    while(section.length < 3 && videoIndex < videos.length && !section.some(item => item.type === "video")){
+      section.push(videos[videoIndex++]);
+    }
+
+    while(section.length < 3 && photoIndex < photos.length){
+      section.push(photos[photoIndex++]);
+    }
+
+    while(section.length < 3 && videoIndex < videos.length){
+      section.push(videos[videoIndex++]);
     }
 
     sections.push(shuffle(section));
@@ -183,118 +248,219 @@ function buildSections(){
   return sections;
 }
 
-const groups = buildSections();
+const groups = buildMixedSections(photos, videos);
+const body = document.body;
+const audio = document.getElementById("belly-audio");
 
-groups.forEach(group=>{
+let userHasInteracted = false;
+let bellyStarted = false;
+
+function unlockAudio(){
+  userHasInteracted = true;
+}
+
+window.addEventListener("click", unlockAudio, { once:true });
+window.addEventListener("touchstart", unlockAudio, { once:true });
+window.addEventListener("keydown", unlockAudio, { once:true });
+window.addEventListener("wheel", unlockAudio, { once:true });
+
+groups.forEach(group => {
   const section = document.createElement("section");
   section.className = "section";
 
   const grid = document.createElement("div");
   grid.className = "media-grid";
 
-  group.forEach(item=>{
+  group.forEach(item => {
     const card = document.createElement("div");
     card.className = "media-card";
 
-    if(item.type==="image"){
+    if(item.type === "image"){
       const img = document.createElement("img");
-      loadImage(img,item.base);
+      img.alt = item.base;
+      loadImage(img, item.base);
       card.appendChild(img);
     } else {
       const video = document.createElement("video");
       video.muted = true;
       video.loop = true;
+      video.autoplay = false;
       video.playsInline = true;
       video.controls = true;
       video.preload = "metadata";
 
-      const err = document.createElement("div");
-      err.className="error";
-      err.textContent=item.base+" failed to load";
+      const error = document.createElement("div");
+      error.className = "error";
+      error.textContent = item.base + " could not be decoded by this browser.";
 
-      setupVideo(video,card,item.base);
+      setupVideo(video, card, item.base);
 
       card.appendChild(video);
-      card.appendChild(err);
+      card.appendChild(error);
     }
 
     grid.appendChild(card);
   });
 
   section.appendChild(grid);
-  document.body.appendChild(section);
+  body.appendChild(section);
 });
 
-const sections = [...document.querySelectorAll(".section")];
+const finalSection = document.createElement("section");
+finalSection.className = "final-section";
 
-const observer = new IntersectionObserver(entries=>{
-  entries.forEach(entry=>{
-    const vids = entry.target.querySelectorAll("video");
+const finalWrap = document.createElement("div");
+finalWrap.className = "final-image-wrap";
+
+const finalImg = document.createElement("img");
+finalImg.src = "pibble.jpg";
+finalImg.alt = "pibble";
+
+finalWrap.appendChild(finalImg);
+finalSection.appendChild(finalWrap);
+body.appendChild(finalSection);
+
+const sections = Array.from(document.querySelectorAll(".section, .final-section"));
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const videos = entry.target.querySelectorAll("video");
 
     if(entry.isIntersecting){
       entry.target.classList.add("active");
-      vids.forEach(v=>v.play().catch(()=>{}));
+
+      videos.forEach(v => {
+        const p = v.play();
+        if(p) p.catch(() => {});
+      });
+
+      if(entry.target.classList.contains("final-section")){
+        document.body.classList.add("final-cursor");
+
+        if(userHasInteracted && !bellyStarted){
+          bellyStarted = true;
+          audio.currentTime = 0;
+          const p = audio.play();
+          if(p) p.catch(() => {});
+        }
+      } else {
+        document.body.classList.remove("final-cursor");
+      }
     } else {
       entry.target.classList.remove("active");
-      vids.forEach(v=>{
+
+      videos.forEach(v => {
         v.pause();
-        v.currentTime=0;
+        v.currentTime = 0;
       });
+
+      if(entry.target.classList.contains("final-section")){
+        document.body.classList.remove("final-cursor");
+        audio.pause();
+        audio.currentTime = 0;
+        bellyStarted = false;
+      }
     }
   });
-},{threshold:0.7});
+}, { threshold:0.7 });
 
-sections.forEach(s=>observer.observe(s));
+sections.forEach(s => observer.observe(s));
 
-let index = 0;
-let locked = false;
+let currentSectionIndex = 0;
+let isScrolling = false;
+let touchStartY = 0;
+const scrollLockMs = 900;
 
-function go(i){
-  index = Math.max(0,Math.min(i,sections.length-1));
-  locked = true;
+function goToSection(index){
+  const clamped = Math.max(0, Math.min(index, sections.length - 1));
+  currentSectionIndex = clamped;
+  isScrolling = true;
 
-  sections[index].scrollIntoView({behavior:"smooth"});
+  sections[clamped].scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
 
-  setTimeout(()=>locked=false,900);
+  setTimeout(() => {
+    isScrolling = false;
+  }, scrollLockMs);
 }
 
-window.addEventListener("wheel",e=>{
+window.addEventListener("wheel", (e) => {
   e.preventDefault();
-  if(locked) return;
 
-  if(e.deltaY>0) go(index+1);
-  else go(index-1);
-},{passive:false});
+  if(isScrolling) return;
 
-window.addEventListener("keydown",e=>{
-  if(locked) return;
-
-  if(e.key==="ArrowDown"||e.key===" "){
-    e.preventDefault();
-    go(index+1);
+  if(e.deltaY > 10 && currentSectionIndex < sections.length - 1){
+    goToSection(currentSectionIndex + 1);
+  } else if(e.deltaY < -10 && currentSectionIndex > 0){
+    goToSection(currentSectionIndex - 1);
   }
-  if(e.key==="ArrowUp"){
+}, { passive:false });
+
+window.addEventListener("keydown", (e) => {
+  if(isScrolling) return;
+
+  if((e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ")) {
     e.preventDefault();
-    go(index-1);
+    if(currentSectionIndex < sections.length - 1){
+      goToSection(currentSectionIndex + 1);
+    }
+  }
+
+  if(e.key === "ArrowUp" || e.key === "PageUp"){
+    e.preventDefault();
+    if(currentSectionIndex > 0){
+      goToSection(currentSectionIndex - 1);
+    }
+  }
+
+  if(e.key === "Home"){
+    e.preventDefault();
+    goToSection(0);
+  }
+
+  if(e.key === "End"){
+    e.preventDefault();
+    goToSection(sections.length - 1);
   }
 });
 
-let startY=0;
+window.addEventListener("touchstart", (e) => {
+  touchStartY = e.changedTouches[0].clientY;
+}, { passive:true });
 
-window.addEventListener("touchstart",e=>{
-  startY=e.touches[0].clientY;
-});
+window.addEventListener("touchend", (e) => {
+  if(isScrolling) return;
 
-window.addEventListener("touchend",e=>{
-  if(locked) return;
+  const touchEndY = e.changedTouches[0].clientY;
+  const diff = touchStartY - touchEndY;
 
-  const diff=startY-e.changedTouches[0].clientY;
+  if(Math.abs(diff) < 50) return;
 
-  if(Math.abs(diff)<50) return;
+  if(diff > 0 && currentSectionIndex < sections.length - 1){
+    goToSection(currentSectionIndex + 1);
+  } else if(diff < 0 && currentSectionIndex > 0){
+    goToSection(currentSectionIndex - 1);
+  }
+}, { passive:true });
 
-  if(diff>0) go(index+1);
-  else go(index-1);
-});
+window.addEventListener("scroll", () => {
+  if(isScrolling) return;
+
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+
+  sections.forEach((section, index) => {
+    const distance = Math.abs(section.getBoundingClientRect().top);
+    if(distance < bestDistance){
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+
+  currentSectionIndex = bestIndex;
+}, { passive:true });
 </script>
 
 </body>
