@@ -280,10 +280,33 @@ document.body.appendChild(overlay);
 // ---------- AUDIO ----------
 const audio=document.getElementById("belly-audio");
 audio.volume=1;
+audio.preload="auto";
 
 let playing=false;
 let rub=0;
 let letterOpen=false;
+let audioUnlocked=false;
+
+function unlockAudio(){
+  if(audioUnlocked) return;
+
+  audio.muted = true;
+  audio.currentTime = 0;
+
+  const p = audio.play();
+  if(p){
+    p.then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+      audioUnlocked = true;
+    }).catch(() => {});
+  }
+}
+
+window.addEventListener("pointerdown", unlockAudio, { once:true });
+window.addEventListener("touchstart", unlockAudio, { once:true });
+window.addEventListener("keydown", unlockAudio, { once:true });
 
 // ---------- INTERSECTION / FADE / PLAY ----------
 const sections=[...document.querySelectorAll("section")];
@@ -302,12 +325,26 @@ const obs=new IntersectionObserver(entries=>{
 
       if(entry.target===final){
         document.body.classList.add("final-cursor");
-        if(!playing&&!letterOpen){
+
+        if(!playing && !letterOpen){
           playing=true;
           audio.currentTime=0;
+
           const p=audio.play();
-          if(p) p.catch(()=>{});
+          if(p){
+            p.catch(()=>{
+              setTimeout(()=>{
+                if(final.classList.contains("active") && !letterOpen){
+                  audio.currentTime=0;
+                  const retry=audio.play();
+                  if(retry) retry.catch(()=>{});
+                }
+              },150);
+            });
+          }
         }
+      }else{
+        document.body.classList.remove("final-cursor");
       }
     }else{
       entry.target.classList.remove("active");
@@ -481,7 +518,8 @@ function closeLetter(){
   rub=0;
 
   if(final.classList.contains("active")){
-    const p=audio.play();
+    audio.currentTime = 0;
+    const p = audio.play();
     if(p) p.catch(()=>{});
     playing=true;
   }
