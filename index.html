@@ -140,62 +140,104 @@ const landscapeVideos=["lv1","lv2","lv3","lv4","lv5"];
 const imageExts=[".jpg",".jpeg",".JPG",".JPEG"];
 const videoExts=[".mp4",".MP4",".mov",".MOV"];
 
-function shuffle(a){return a.sort(()=>Math.random()-0.5);}
+function shuffle(array){
+  const arr=[...array];
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
 
 function loadImage(img,base){
   let i=0;
   function next(){
-    if(i>=imageExts.length)return;
+    if(i>=imageExts.length){
+      img.style.display="none";
+      return;
+    }
     img.src=base+imageExts[i++];
   }
   img.onerror=next;
   next();
 }
 
-function setupVideo(v,base){
+function setupVideo(video,base){
   let i=0;
   function next(){
     if(i>=videoExts.length)return;
-    v.src=base+videoExts[i++];
+    video.src=base+videoExts[i++];
+    video.load();
   }
-  v.onerror=next;
+  video.onerror=next;
   next();
 }
 
-const photos=shuffle([...portraitPhotos,...landscapePhotos].map(x=>({t:"i",b:x})));
-const videos=shuffle([...portraitVideos,...landscapeVideos].map(x=>({t:"v",b:x})));
+const photos=shuffle([
+  ...portraitPhotos.map(x=>({t:"i",b:x})),
+  ...landscapePhotos.map(x=>({t:"i",b:x}))
+]);
 
-function build(){
-  const out=[]; let p=0,v=0;
+const videos=shuffle([
+  ...portraitVideos.map(x=>({t:"v",b:x})),
+  ...landscapeVideos.map(x=>({t:"v",b:x}))
+]);
+
+function buildSections(){
+  const out=[];
+  let p=0,v=0;
+
   while(p<photos.length||v<videos.length){
-    const s=[];
-    if(v<videos.length)s.push(videos[v++]);
-    while(s.length<3&&p<photos.length)s.push(photos[p++]);
-    out.push(shuffle(s));
+    const section=[];
+
+    if(v<videos.length) section.push(videos[v++]);
+
+    while(section.length<3&&p<photos.length){
+      section.push(photos[p++]);
+    }
+
+    while(section.length<3&&v<videos.length&&!section.some(x=>x.t==="v")){
+      section.push(videos[v++]);
+    }
+
+    while(section.length<3&&p<photos.length){
+      section.push(photos[p++]);
+    }
+
+    while(section.length<3&&v<videos.length){
+      section.push(videos[v++]);
+    }
+
+    out.push(shuffle(section));
   }
+
   return out;
 }
 
-build().forEach(g=>{
+buildSections().forEach(group=>{
   const sec=document.createElement("section");
   sec.className="section";
 
   const grid=document.createElement("div");
   grid.className="media-grid";
 
-  g.forEach(it=>{
+  group.forEach(item=>{
     const card=document.createElement("div");
     card.className="media-card";
 
-    if(it.t==="i"){
+    if(item.t==="i"){
       const img=document.createElement("img");
-      loadImage(img,it.b);
+      loadImage(img,item.b);
       card.appendChild(img);
     }else{
-      const v=document.createElement("video");
-      v.muted=true; v.loop=true; v.controls=true;
-      setupVideo(v,it.b);
-      card.appendChild(v);
+      const video=document.createElement("video");
+      video.muted=true;
+      video.loop=true;
+      video.controls=true;
+      video.playsInline=true;
+      video.preload="metadata";
+      setupVideo(video,item.b);
+      card.appendChild(video);
     }
 
     grid.appendChild(card);
@@ -212,6 +254,7 @@ final.className="final-section";
 const dog=document.createElement("img");
 dog.src="pibble.png";
 dog.className="final-dog";
+dog.alt="pibble";
 
 final.appendChild(dog);
 document.body.appendChild(final);
@@ -223,10 +266,12 @@ overlay.className="letter-overlay";
 const letter=document.createElement("img");
 letter.src="letter.jpg";
 letter.className="letter-image";
+letter.alt="letter";
 
 const close=document.createElement("button");
 close.className="letter-close";
 close.innerHTML="&times;";
+close.setAttribute("aria-label","Close letter");
 
 overlay.appendChild(letter);
 overlay.appendChild(close);
@@ -234,82 +279,220 @@ document.body.appendChild(overlay);
 
 // ---------- AUDIO ----------
 const audio=document.getElementById("belly-audio");
-let playing=false;
+audio.volume=1;
 
-// ---------- OBSERVER ----------
+let playing=false;
+let rub=0;
+let letterOpen=false;
+
+// ---------- INTERSECTION / FADE / PLAY ----------
 const sections=[...document.querySelectorAll("section")];
 
 const obs=new IntersectionObserver(entries=>{
-  entries.forEach(e=>{
-    if(e.isIntersecting){
-      e.target.classList.add("active");
+  entries.forEach(entry=>{
+    const vids=entry.target.querySelectorAll("video");
 
-      if(e.target===final){
+    if(entry.isIntersecting){
+      entry.target.classList.add("active");
+
+      vids.forEach(v=>{
+        const p=v.play();
+        if(p) p.catch(()=>{});
+      });
+
+      if(entry.target===final){
         document.body.classList.add("final-cursor");
-
-        if(!playing){
+        if(!playing&&!letterOpen){
           playing=true;
           audio.currentTime=0;
-          audio.play().catch(()=>{});
+          const p=audio.play();
+          if(p) p.catch(()=>{});
         }
       }
     }else{
-      e.target.classList.remove("active");
+      entry.target.classList.remove("active");
 
-      if(e.target===final){
+      vids.forEach(v=>{
+        v.pause();
+        v.currentTime=0;
+      });
+
+      if(entry.target===final){
         document.body.classList.remove("final-cursor");
         audio.pause();
+        audio.currentTime=0;
         playing=false;
       }
     }
   });
-},{threshold:0.7});
+},{threshold:0.72});
 
 sections.forEach(s=>obs.observe(s));
 
-// ---------- RUB DETECTION ----------
-let rub=0;
+// ---------- SNAP / SCROLL LOCK ----------
+let currentSectionIndex=0;
+let isScrolling=false;
+let touchStartY=0;
+const scrollLockMs=900;
+
+function goToSection(index){
+  const clamped=Math.max(0,Math.min(index,sections.length-1));
+  currentSectionIndex=clamped;
+  isScrolling=true;
+
+  sections[clamped].scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
+
+  setTimeout(()=>{
+    isScrolling=false;
+  },scrollLockMs);
+}
+
+window.addEventListener("wheel",e=>{
+  if(letterOpen) return;
+
+  e.preventDefault();
+  if(isScrolling) return;
+
+  if(e.deltaY>10&&currentSectionIndex<sections.length-1){
+    goToSection(currentSectionIndex+1);
+  }else if(e.deltaY<-10&&currentSectionIndex>0){
+    goToSection(currentSectionIndex-1);
+  }
+},{passive:false});
+
+window.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&letterOpen){
+    e.preventDefault();
+    closeLetter();
+    return;
+  }
+
+  if(letterOpen||isScrolling) return;
+
+  if(e.key==="ArrowDown"||e.key==="PageDown"||e.key===" "){
+    e.preventDefault();
+    if(currentSectionIndex<sections.length-1){
+      goToSection(currentSectionIndex+1);
+    }
+  }
+
+  if(e.key==="ArrowUp"||e.key==="PageUp"){
+    e.preventDefault();
+    if(currentSectionIndex>0){
+      goToSection(currentSectionIndex-1);
+    }
+  }
+
+  if(e.key==="Home"){
+    e.preventDefault();
+    goToSection(0);
+  }
+
+  if(e.key==="End"){
+    e.preventDefault();
+    goToSection(sections.length-1);
+  }
+});
+
+window.addEventListener("touchstart",e=>{
+  touchStartY=e.changedTouches[0].clientY;
+},{passive:true});
+
+window.addEventListener("touchend",e=>{
+  if(letterOpen||isScrolling) return;
+
+  const touchEndY=e.changedTouches[0].clientY;
+  const diff=touchStartY-touchEndY;
+
+  if(Math.abs(diff)<50) return;
+
+  if(diff>0&&currentSectionIndex<sections.length-1){
+    goToSection(currentSectionIndex+1);
+  }else if(diff<0&&currentSectionIndex>0){
+    goToSection(currentSectionIndex-1);
+  }
+},{passive:true});
+
+window.addEventListener("scroll",()=>{
+  if(isScrolling||letterOpen) return;
+
+  let bestIndex=0;
+  let bestDistance=Infinity;
+
+  sections.forEach((section,index)=>{
+    const distance=Math.abs(section.getBoundingClientRect().top);
+    if(distance<bestDistance){
+      bestDistance=distance;
+      bestIndex=index;
+    }
+  });
+
+  currentSectionIndex=bestIndex;
+},{passive:true});
+
+// ---------- BELLY RUB ----------
 function checkRub(x,y){
+  if(letterOpen) return;
+  if(!document.body.classList.contains("final-cursor")) return;
+
   const r=dog.getBoundingClientRect();
 
-  if(x>r.left && x<r.right && y>r.top && y<r.bottom){
-    rub++;
-    if(rub>40 && !overlay.classList.contains("open")){
-      audio.pause();
-      overlay.classList.add("open");
-    }
+  if(x<r.left||x>r.right||y<r.top||y>r.bottom) return;
+
+  const relX=(x-r.left)/r.width;
+  const relY=(y-r.top)/r.height;
+
+  const inBelly=
+    relX>0.28&&relX<0.72&&
+    relY>0.40&&relY<0.84;
+
+  if(!inBelly) return;
+
+  rub++;
+  if(rub>40&&!letterOpen){
+    openLetter();
   }
 }
 
 window.addEventListener("mousemove",e=>{
-  if(document.body.classList.contains("final-cursor")){
-    checkRub(e.clientX,e.clientY);
-  }
+  checkRub(e.clientX,e.clientY);
 });
 
 window.addEventListener("touchmove",e=>{
   const t=e.touches[0];
   if(t) checkRub(t.clientX,t.clientY);
-});
+},{passive:true});
 
-// ---------- CLOSE LETTER ----------
+// ---------- LETTER OPEN/CLOSE ----------
+function openLetter(){
+  letterOpen=true;
+  audio.pause();
+  audio.currentTime=0;
+  playing=false;
+  overlay.classList.add("open");
+}
+
 function closeLetter(){
   overlay.classList.remove("open");
+  letterOpen=false;
   rub=0;
 
   if(final.classList.contains("active")){
-    audio.play().catch(()=>{});
+    const p=audio.play();
+    if(p) p.catch(()=>{});
+    playing=true;
   }
 }
 
-close.onclick=closeLetter;
+close.addEventListener("click",closeLetter);
 
-overlay.onclick=(e)=>{
-  if(e.target===overlay) closeLetter();
-};
-
-window.addEventListener("keydown",e=>{
-  if(e.key==="Escape") closeLetter();
+overlay.addEventListener("click",e=>{
+  if(e.target===overlay){
+    closeLetter();
+  }
 });
 </script>
 
