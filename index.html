@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>I Love Gaya ❤️</title>
-
 <style>
 *{box-sizing:border-box}
 
@@ -99,38 +98,83 @@ body.final-cursor *{
   padding:28px;
   opacity:0;
   transition:opacity 1.2s ease;
+  background:#cfc4ff;
+  position:relative;
 }
 
 .final-section.active{
   opacity:1;
 }
 
-.final-image-wrap{
+.final-wrap{
   width:100%;
   max-width:900px;
   height:80vh;
   display:flex;
   align-items:center;
   justify-content:center;
+  position:relative;
 }
 
-.final-image-wrap img{
+.final-dog{
   max-width:100%;
   max-height:100%;
   object-fit:contain;
   display:block;
+  user-select:none;
+  -webkit-user-drag:none;
+  touch-action:none;
+}
+
+.rub-hint{
+  position:absolute;
+  bottom:12px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:14px;
+  color:rgba(0,0,0,0.55);
+  pointer-events:none;
+  text-align:center;
+}
+
+.letter-overlay{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.45);
+  opacity:0;
+  visibility:hidden;
+  transition:opacity 0.5s ease, visibility 0.5s ease;
+  z-index:10000;
+}
+
+.letter-overlay.open{
+  opacity:1;
+  visibility:visible;
+}
+
+.letter-image{
+  max-width:min(90vw, 950px);
+  max-height:90vh;
+  object-fit:contain;
+  display:block;
+  border-radius:18px;
+  box-shadow:0 18px 50px rgba(0,0,0,0.35);
+  background:#fff;
 }
 
 @media (max-width:950px){
   .media-grid{grid-template-columns:1fr}
   .media-card{height:78vh}
+  .rub-hint{font-size:13px}
 }
 </style>
 </head>
-
 <body>
 
-<div class="version-tag">v1.1.0</div>
+<div class="version-tag">v1.2.0</div>
 <audio id="belly-audio" src="belly.mp3" preload="auto"></audio>
 
 <script>
@@ -254,6 +298,7 @@ const audio = document.getElementById("belly-audio");
 
 let userHasInteracted = false;
 let bellyStarted = false;
+let letterOpened = false;
 
 function unlockAudio(){
   userHasInteracted = true;
@@ -310,15 +355,32 @@ const finalSection = document.createElement("section");
 finalSection.className = "final-section";
 
 const finalWrap = document.createElement("div");
-finalWrap.className = "final-image-wrap";
+finalWrap.className = "final-wrap";
 
-const finalImg = document.createElement("img");
-finalImg.src = "pibble.jpg";
-finalImg.alt = "pibble";
+const finalDog = document.createElement("img");
+finalDog.className = "final-dog";
+finalDog.src = "pibble.png";
+finalDog.alt = "pibble";
 
-finalWrap.appendChild(finalImg);
+const rubHint = document.createElement("div");
+rubHint.className = "rub-hint";
+rubHint.textContent = "Rub the belly";
+
+finalWrap.appendChild(finalDog);
+finalWrap.appendChild(rubHint);
 finalSection.appendChild(finalWrap);
 body.appendChild(finalSection);
+
+const letterOverlay = document.createElement("div");
+letterOverlay.className = "letter-overlay";
+
+const letterImg = document.createElement("img");
+letterImg.className = "letter-image";
+letterImg.src = "letter.jpg";
+letterImg.alt = "letter";
+
+letterOverlay.appendChild(letterImg);
+body.appendChild(letterOverlay);
 
 const sections = Array.from(document.querySelectorAll(".section, .final-section"));
 
@@ -337,7 +399,7 @@ const observer = new IntersectionObserver((entries) => {
       if(entry.target.classList.contains("final-section")){
         document.body.classList.add("final-cursor");
 
-        if(userHasInteracted && !bellyStarted){
+        if(userHasInteracted && !bellyStarted && !letterOpened){
           bellyStarted = true;
           audio.currentTime = 0;
           const p = audio.play();
@@ -387,6 +449,8 @@ function goToSection(index){
 }
 
 window.addEventListener("wheel", (e) => {
+  if(letterOpened) return;
+
   e.preventDefault();
 
   if(isScrolling) return;
@@ -399,6 +463,7 @@ window.addEventListener("wheel", (e) => {
 }, { passive:false });
 
 window.addEventListener("keydown", (e) => {
+  if(letterOpened) return;
   if(isScrolling) return;
 
   if((e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ")) {
@@ -431,6 +496,7 @@ window.addEventListener("touchstart", (e) => {
 }, { passive:true });
 
 window.addEventListener("touchend", (e) => {
+  if(letterOpened) return;
   if(isScrolling) return;
 
   const touchEndY = e.changedTouches[0].clientY;
@@ -446,7 +512,7 @@ window.addEventListener("touchend", (e) => {
 }, { passive:true });
 
 window.addEventListener("scroll", () => {
-  if(isScrolling) return;
+  if(isScrolling || letterOpened) return;
 
   let bestIndex = 0;
   let bestDistance = Infinity;
@@ -460,6 +526,83 @@ window.addEventListener("scroll", () => {
   });
 
   currentSectionIndex = bestIndex;
+}, { passive:true });
+
+let rubProgress = 0;
+const rubTarget = 45;
+let lastRubX = null;
+let lastRubY = null;
+let lastRubTime = 0;
+
+function openLetter(){
+  if(letterOpened) return;
+  letterOpened = true;
+
+  audio.pause();
+  audio.currentTime = 0;
+  bellyStarted = false;
+
+  rubHint.textContent = "";
+  letterOverlay.classList.add("open");
+}
+
+function processRub(clientX, clientY){
+  if(letterOpened) return;
+  if(!finalSection.classList.contains("active")) return;
+
+  const rect = finalDog.getBoundingClientRect();
+
+  if(clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom){
+    lastRubX = null;
+    lastRubY = null;
+    return;
+  }
+
+  const x = (clientX - rect.left) / rect.width;
+  const y = (clientY - rect.top) / rect.height;
+
+  const inBelly =
+    x > 0.28 && x < 0.72 &&
+    y > 0.40 && y < 0.82;
+
+  if(!inBelly){
+    lastRubX = null;
+    lastRubY = null;
+    return;
+  }
+
+  const now = Date.now();
+
+  if(lastRubX !== null && lastRubY !== null){
+    const dx = clientX - lastRubX;
+    const dy = clientY - lastRubY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    if(dist > 3 && now - lastRubTime < 250){
+      rubProgress += 1;
+      if(rubProgress >= rubTarget){
+        openLetter();
+      }
+    }
+  }
+
+  lastRubX = clientX;
+  lastRubY = clientY;
+  lastRubTime = now;
+}
+
+window.addEventListener("mousemove", (e) => {
+  if(document.body.classList.contains("final-cursor")){
+    processRub(e.clientX, e.clientY);
+  }
+});
+
+window.addEventListener("touchmove", (e) => {
+  if(!document.body.classList.contains("final-cursor")) return;
+  const touch = e.touches[0];
+  if(touch){
+    processRub(touch.clientX, touch.clientY);
+  }
 }, { passive:true });
 </script>
 
