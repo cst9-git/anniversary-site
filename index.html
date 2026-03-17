@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>I Love Gaya ❤️</title>
+
 <style>
 *{box-sizing:border-box}
 
@@ -23,8 +24,6 @@ html,body{
   font-size:10px;
   color:rgba(255,255,255,0.35);
   z-index:9999;
-  user-select:none;
-  pointer-events:none;
 }
 
 body.final-cursor,
@@ -48,7 +47,7 @@ body.final-cursor *{
   width:100%;
   max-width:1500px;
   display:grid;
-  grid-template-columns:repeat(3, 1fr);
+  grid-template-columns:repeat(3,1fr);
   gap:22px;
 }
 
@@ -62,7 +61,6 @@ body.final-cursor *{
   display:flex;
   align-items:center;
   justify-content:center;
-  position:relative;
 }
 
 .media-card img,
@@ -70,24 +68,6 @@ body.final-cursor *{
   width:100%;
   height:100%;
   object-fit:contain;
-  background:#111;
-}
-
-.error{
-  position:absolute;
-  inset:0;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  padding:20px;
-  color:#ff8f8f;
-  background:rgba(0,0,0,0.88);
-  font-size:14px;
-}
-
-.media-card.failed .error{
-  display:flex;
 }
 
 .final-section{
@@ -95,58 +75,25 @@ body.final-cursor *{
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:28px;
-  opacity:0;
-  transition:opacity 1.2s ease;
   background:#cfc4ff;
-  position:relative;
-}
-
-.final-section.active{
-  opacity:1;
-}
-
-.final-wrap{
-  width:100%;
-  max-width:900px;
-  height:80vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  position:relative;
 }
 
 .final-dog{
-  max-width:100%;
-  max-height:100%;
-  object-fit:contain;
-  display:block;
+  max-width:90%;
+  max-height:80vh;
   user-select:none;
-  -webkit-user-drag:none;
-  touch-action:none;
-}
-
-.rub-hint{
-  position:absolute;
-  bottom:12px;
-  left:50%;
-  transform:translateX(-50%);
-  font-size:14px;
-  color:rgba(0,0,0,0.55);
-  pointer-events:none;
-  text-align:center;
 }
 
 .letter-overlay{
   position:fixed;
   inset:0;
+  background:rgba(0,0,0,0.6);
   display:flex;
   align-items:center;
   justify-content:center;
-  background:rgba(0,0,0,0.45);
   opacity:0;
   visibility:hidden;
-  transition:opacity 0.5s ease, visibility 0.5s ease;
+  transition:0.4s;
   z-index:10000;
 }
 
@@ -156,454 +103,214 @@ body.final-cursor *{
 }
 
 .letter-image{
-  max-width:min(90vw, 950px);
-  max-height:90vh;
-  object-fit:contain;
-  display:block;
-  border-radius:18px;
-  box-shadow:0 18px 50px rgba(0,0,0,0.35);
-  background:#fff;
+  max-width:90%;
+  max-height:90%;
+  border-radius:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
 }
 
-@media (max-width:950px){
-  .media-grid{grid-template-columns:1fr}
-  .media-card{height:78vh}
-  .rub-hint{font-size:13px}
+.letter-close{
+  position:absolute;
+  top:20px;
+  right:20px;
+  width:40px;
+  height:40px;
+  border:none;
+  border-radius:50%;
+  background:#fff;
+  color:#000;
+  font-size:22px;
+  cursor:pointer;
 }
 </style>
 </head>
+
 <body>
 
-<div class="version-tag">v1.2.0</div>
-<audio id="belly-audio" src="belly.mp3" preload="auto"></audio>
+<div class="version-tag">v1.2.1</div>
+<audio id="belly-audio" src="belly.mp3"></audio>
 
 <script>
-const portraitPhotos = [
-  "pp1","pp2","pp3","pp4","pp5","pp6","pp7","pp8","pp9","pp10",
-  "pp11","pp12","pp13","pp14","pp15","pp16","pp17","pp18","pp19","pp20",
-  "pp21","pp22","pp23","pp24","pp25","pp26","pp27","pp28","pp29","pp30",
-  "pp31","pp32","pp33","pp34","pp35","pp36"
-];
+// ---------- MEDIA SETUP ----------
+const portraitPhotos=[...Array(36)].map((_,i)=>"pp"+(i+1));
+const landscapePhotos=[...Array(23)].map((_,i)=>"lp"+(i+1));
+const portraitVideos=[...Array(19)].map((_,i)=>"pv"+(i+1));
+const landscapeVideos=["lv1","lv2","lv3","lv4","lv5"];
 
-const landscapePhotos = [
-  "lp1","lp2","lp3","lp4","lp5","lp6","lp7","lp8","lp9","lp10","lp11",
-  "lp12","lp13","lp14","lp15","lp16","lp17","lp18","lp19","lp20","lp21","lp22","lp23"
-];
+const imageExts=[".jpg",".jpeg",".JPG",".JPEG"];
+const videoExts=[".mp4",".MP4",".mov",".MOV"];
 
-const portraitVideos = [
-  "pv1","pv2","pv3","pv4","pv5","pv6","pv7","pv8","pv9","pv10",
-  "pv11","pv12","pv13","pv14","pv15","pv16","pv17","pv18","pv19"
-];
+function shuffle(a){return a.sort(()=>Math.random()-0.5);}
 
-const landscapeVideos = ["lv1","lv2","lv3","lv4","lv5"];
-
-const imageExts = [".jpg",".jpeg",".JPG",".JPEG"];
-const videoExts = [".mp4",".MP4",".mov",".MOV"];
-
-function shuffle(array){
-  const arr = [...array];
-  for(let i = arr.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function loadImage(img, base){
-  let i = 0;
+function loadImage(img,base){
+  let i=0;
   function next(){
-    if(i >= imageExts.length){
-      img.style.display = "none";
-      return;
-    }
-    img.src = base + imageExts[i++];
+    if(i>=imageExts.length)return;
+    img.src=base+imageExts[i++];
   }
-  img.onerror = next;
+  img.onerror=next;
   next();
 }
 
-function setupVideo(video, card, base){
-  let i = 0;
-  let working = false;
-
+function setupVideo(v,base){
+  let i=0;
   function next(){
-    if(i >= videoExts.length){
-      card.classList.add("failed");
-      return;
-    }
-    const src = base + videoExts[i++];
-    video.src = src;
-    video.load();
+    if(i>=videoExts.length)return;
+    v.src=base+videoExts[i++];
   }
-
-  video.addEventListener("loadeddata", () => {
-    working = true;
-    card.classList.remove("failed");
-  });
-
-  video.addEventListener("error", () => {
-    if(!working) next();
-  });
-
+  v.onerror=next;
   next();
 }
 
-const photos = shuffle([
-  ...portraitPhotos.map(x => ({type:"image", base:x})),
-  ...landscapePhotos.map(x => ({type:"image", base:x}))
-]);
+const photos=shuffle([...portraitPhotos,...landscapePhotos].map(x=>({t:"i",b:x})));
+const videos=shuffle([...portraitVideos,...landscapeVideos].map(x=>({t:"v",b:x})));
 
-const videos = shuffle([
-  ...portraitVideos.map(x => ({type:"video", base:x})),
-  ...landscapeVideos.map(x => ({type:"video", base:x}))
-]);
-
-function buildMixedSections(photos, videos){
-  const sections = [];
-  let photoIndex = 0;
-  let videoIndex = 0;
-
-  while(photoIndex < photos.length || videoIndex < videos.length){
-    const section = [];
-
-    if(videoIndex < videos.length){
-      section.push(videos[videoIndex++]);
-    }
-
-    while(section.length < 3 && photoIndex < photos.length){
-      section.push(photos[photoIndex++]);
-    }
-
-    while(section.length < 3 && videoIndex < videos.length && !section.some(item => item.type === "video")){
-      section.push(videos[videoIndex++]);
-    }
-
-    while(section.length < 3 && photoIndex < photos.length){
-      section.push(photos[photoIndex++]);
-    }
-
-    while(section.length < 3 && videoIndex < videos.length){
-      section.push(videos[videoIndex++]);
-    }
-
-    sections.push(shuffle(section));
+function build(){
+  const out=[]; let p=0,v=0;
+  while(p<photos.length||v<videos.length){
+    const s=[];
+    if(v<videos.length)s.push(videos[v++]);
+    while(s.length<3&&p<photos.length)s.push(photos[p++]);
+    out.push(shuffle(s));
   }
-
-  return sections;
+  return out;
 }
 
-const groups = buildMixedSections(photos, videos);
-const body = document.body;
-const audio = document.getElementById("belly-audio");
+build().forEach(g=>{
+  const sec=document.createElement("section");
+  sec.className="section";
 
-let userHasInteracted = false;
-let bellyStarted = false;
-let letterOpened = false;
+  const grid=document.createElement("div");
+  grid.className="media-grid";
 
-function unlockAudio(){
-  userHasInteracted = true;
-}
+  g.forEach(it=>{
+    const card=document.createElement("div");
+    card.className="media-card";
 
-window.addEventListener("click", unlockAudio, { once:true });
-window.addEventListener("touchstart", unlockAudio, { once:true });
-window.addEventListener("keydown", unlockAudio, { once:true });
-window.addEventListener("wheel", unlockAudio, { once:true });
-
-groups.forEach(group => {
-  const section = document.createElement("section");
-  section.className = "section";
-
-  const grid = document.createElement("div");
-  grid.className = "media-grid";
-
-  group.forEach(item => {
-    const card = document.createElement("div");
-    card.className = "media-card";
-
-    if(item.type === "image"){
-      const img = document.createElement("img");
-      img.alt = item.base;
-      loadImage(img, item.base);
+    if(it.t==="i"){
+      const img=document.createElement("img");
+      loadImage(img,it.b);
       card.appendChild(img);
-    } else {
-      const video = document.createElement("video");
-      video.muted = true;
-      video.loop = true;
-      video.autoplay = false;
-      video.playsInline = true;
-      video.controls = true;
-      video.preload = "metadata";
-
-      const error = document.createElement("div");
-      error.className = "error";
-      error.textContent = item.base + " could not be decoded by this browser.";
-
-      setupVideo(video, card, item.base);
-
-      card.appendChild(video);
-      card.appendChild(error);
+    }else{
+      const v=document.createElement("video");
+      v.muted=true; v.loop=true; v.controls=true;
+      setupVideo(v,it.b);
+      card.appendChild(v);
     }
 
     grid.appendChild(card);
   });
 
-  section.appendChild(grid);
-  body.appendChild(section);
+  sec.appendChild(grid);
+  document.body.appendChild(sec);
 });
 
-const finalSection = document.createElement("section");
-finalSection.className = "final-section";
+// ---------- FINAL SECTION ----------
+const final=document.createElement("section");
+final.className="final-section";
 
-const finalWrap = document.createElement("div");
-finalWrap.className = "final-wrap";
+const dog=document.createElement("img");
+dog.src="pibble.png";
+dog.className="final-dog";
 
-const finalDog = document.createElement("img");
-finalDog.className = "final-dog";
-finalDog.src = "pibble.png";
-finalDog.alt = "pibble";
+final.appendChild(dog);
+document.body.appendChild(final);
 
-const rubHint = document.createElement("div");
-rubHint.className = "rub-hint";
-rubHint.textContent = "Rub the belly";
+// ---------- LETTER ----------
+const overlay=document.createElement("div");
+overlay.className="letter-overlay";
 
-finalWrap.appendChild(finalDog);
-finalWrap.appendChild(rubHint);
-finalSection.appendChild(finalWrap);
-body.appendChild(finalSection);
+const letter=document.createElement("img");
+letter.src="letter.jpg";
+letter.className="letter-image";
 
-const letterOverlay = document.createElement("div");
-letterOverlay.className = "letter-overlay";
+const close=document.createElement("button");
+close.className="letter-close";
+close.innerHTML="&times;";
 
-const letterImg = document.createElement("img");
-letterImg.className = "letter-image";
-letterImg.src = "letter.jpg";
-letterImg.alt = "letter";
+overlay.appendChild(letter);
+overlay.appendChild(close);
+document.body.appendChild(overlay);
 
-letterOverlay.appendChild(letterImg);
-body.appendChild(letterOverlay);
+// ---------- AUDIO ----------
+const audio=document.getElementById("belly-audio");
+let playing=false;
 
-const sections = Array.from(document.querySelectorAll(".section, .final-section"));
+// ---------- OBSERVER ----------
+const sections=[...document.querySelectorAll("section")];
 
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    const videos = entry.target.querySelectorAll("video");
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add("active");
 
-    if(entry.isIntersecting){
-      entry.target.classList.add("active");
-
-      videos.forEach(v => {
-        const p = v.play();
-        if(p) p.catch(() => {});
-      });
-
-      if(entry.target.classList.contains("final-section")){
+      if(e.target===final){
         document.body.classList.add("final-cursor");
 
-        if(userHasInteracted && !bellyStarted && !letterOpened){
-          bellyStarted = true;
-          audio.currentTime = 0;
-          const p = audio.play();
-          if(p) p.catch(() => {});
+        if(!playing){
+          playing=true;
+          audio.currentTime=0;
+          audio.play().catch(()=>{});
         }
-      } else {
-        document.body.classList.remove("final-cursor");
       }
-    } else {
-      entry.target.classList.remove("active");
+    }else{
+      e.target.classList.remove("active");
 
-      videos.forEach(v => {
-        v.pause();
-        v.currentTime = 0;
-      });
-
-      if(entry.target.classList.contains("final-section")){
+      if(e.target===final){
         document.body.classList.remove("final-cursor");
         audio.pause();
-        audio.currentTime = 0;
-        bellyStarted = false;
+        playing=false;
       }
     }
   });
-}, { threshold:0.7 });
+},{threshold:0.7});
 
-sections.forEach(s => observer.observe(s));
+sections.forEach(s=>obs.observe(s));
 
-let currentSectionIndex = 0;
-let isScrolling = false;
-let touchStartY = 0;
-const scrollLockMs = 900;
+// ---------- RUB DETECTION ----------
+let rub=0;
+function checkRub(x,y){
+  const r=dog.getBoundingClientRect();
 
-function goToSection(index){
-  const clamped = Math.max(0, Math.min(index, sections.length - 1));
-  currentSectionIndex = clamped;
-  isScrolling = true;
-
-  sections[clamped].scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
-
-  setTimeout(() => {
-    isScrolling = false;
-  }, scrollLockMs);
+  if(x>r.left && x<r.right && y>r.top && y<r.bottom){
+    rub++;
+    if(rub>40 && !overlay.classList.contains("open")){
+      audio.pause();
+      overlay.classList.add("open");
+    }
+  }
 }
 
-window.addEventListener("wheel", (e) => {
-  if(letterOpened) return;
-
-  e.preventDefault();
-
-  if(isScrolling) return;
-
-  if(e.deltaY > 10 && currentSectionIndex < sections.length - 1){
-    goToSection(currentSectionIndex + 1);
-  } else if(e.deltaY < -10 && currentSectionIndex > 0){
-    goToSection(currentSectionIndex - 1);
-  }
-}, { passive:false });
-
-window.addEventListener("keydown", (e) => {
-  if(letterOpened) return;
-  if(isScrolling) return;
-
-  if((e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ")) {
-    e.preventDefault();
-    if(currentSectionIndex < sections.length - 1){
-      goToSection(currentSectionIndex + 1);
-    }
-  }
-
-  if(e.key === "ArrowUp" || e.key === "PageUp"){
-    e.preventDefault();
-    if(currentSectionIndex > 0){
-      goToSection(currentSectionIndex - 1);
-    }
-  }
-
-  if(e.key === "Home"){
-    e.preventDefault();
-    goToSection(0);
-  }
-
-  if(e.key === "End"){
-    e.preventDefault();
-    goToSection(sections.length - 1);
-  }
-});
-
-window.addEventListener("touchstart", (e) => {
-  touchStartY = e.changedTouches[0].clientY;
-}, { passive:true });
-
-window.addEventListener("touchend", (e) => {
-  if(letterOpened) return;
-  if(isScrolling) return;
-
-  const touchEndY = e.changedTouches[0].clientY;
-  const diff = touchStartY - touchEndY;
-
-  if(Math.abs(diff) < 50) return;
-
-  if(diff > 0 && currentSectionIndex < sections.length - 1){
-    goToSection(currentSectionIndex + 1);
-  } else if(diff < 0 && currentSectionIndex > 0){
-    goToSection(currentSectionIndex - 1);
-  }
-}, { passive:true });
-
-window.addEventListener("scroll", () => {
-  if(isScrolling || letterOpened) return;
-
-  let bestIndex = 0;
-  let bestDistance = Infinity;
-
-  sections.forEach((section, index) => {
-    const distance = Math.abs(section.getBoundingClientRect().top);
-    if(distance < bestDistance){
-      bestDistance = distance;
-      bestIndex = index;
-    }
-  });
-
-  currentSectionIndex = bestIndex;
-}, { passive:true });
-
-let rubProgress = 0;
-const rubTarget = 45;
-let lastRubX = null;
-let lastRubY = null;
-let lastRubTime = 0;
-
-function openLetter(){
-  if(letterOpened) return;
-  letterOpened = true;
-
-  audio.pause();
-  audio.currentTime = 0;
-  bellyStarted = false;
-
-  rubHint.textContent = "";
-  letterOverlay.classList.add("open");
-}
-
-function processRub(clientX, clientY){
-  if(letterOpened) return;
-  if(!finalSection.classList.contains("active")) return;
-
-  const rect = finalDog.getBoundingClientRect();
-
-  if(clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom){
-    lastRubX = null;
-    lastRubY = null;
-    return;
-  }
-
-  const x = (clientX - rect.left) / rect.width;
-  const y = (clientY - rect.top) / rect.height;
-
-  const inBelly =
-    x > 0.28 && x < 0.72 &&
-    y > 0.40 && y < 0.82;
-
-  if(!inBelly){
-    lastRubX = null;
-    lastRubY = null;
-    return;
-  }
-
-  const now = Date.now();
-
-  if(lastRubX !== null && lastRubY !== null){
-    const dx = clientX - lastRubX;
-    const dy = clientY - lastRubY;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-
-    if(dist > 3 && now - lastRubTime < 250){
-      rubProgress += 1;
-      if(rubProgress >= rubTarget){
-        openLetter();
-      }
-    }
-  }
-
-  lastRubX = clientX;
-  lastRubY = clientY;
-  lastRubTime = now;
-}
-
-window.addEventListener("mousemove", (e) => {
+window.addEventListener("mousemove",e=>{
   if(document.body.classList.contains("final-cursor")){
-    processRub(e.clientX, e.clientY);
+    checkRub(e.clientX,e.clientY);
   }
 });
 
-window.addEventListener("touchmove", (e) => {
-  if(!document.body.classList.contains("final-cursor")) return;
-  const touch = e.touches[0];
-  if(touch){
-    processRub(touch.clientX, touch.clientY);
+window.addEventListener("touchmove",e=>{
+  const t=e.touches[0];
+  if(t) checkRub(t.clientX,t.clientY);
+});
+
+// ---------- CLOSE LETTER ----------
+function closeLetter(){
+  overlay.classList.remove("open");
+  rub=0;
+
+  if(final.classList.contains("active")){
+    audio.play().catch(()=>{});
   }
-}, { passive:true });
+}
+
+close.onclick=closeLetter;
+
+overlay.onclick=(e)=>{
+  if(e.target===overlay) closeLetter();
+};
+
+window.addEventListener("keydown",e=>{
+  if(e.key==="Escape") closeLetter();
+});
 </script>
 
 </body>
