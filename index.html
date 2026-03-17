@@ -4,20 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>I Love Gaya ❤️</title>
+
 <style>
 *{box-sizing:border-box}
 
 html,body{
   margin:0;
   padding:0;
-  background:#000;
-  color:#fff;
+  background:#cfc4ff;
+  color:#222;
   font-family:Arial,sans-serif;
   overflow-x:hidden;
-}
-
-body{
-  overflow-y:auto;
 }
 
 .version-tag{
@@ -25,9 +22,8 @@ body{
   top:8px;
   left:10px;
   font-size:10px;
-  color:rgba(255,255,255,0.35);
+  color:rgba(0,0,0,0.4);
   z-index:9999;
-  letter-spacing:0.5px;
   user-select:none;
   pointer-events:none;
 }
@@ -48,17 +44,17 @@ body{
   width:100%;
   max-width:1500px;
   display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
+  grid-template-columns:repeat(3, 1fr);
   gap:22px;
 }
 
 .media-card{
   width:100%;
   height:78vh;
-  background:#111;
+  background:#fff;
   border-radius:18px;
   overflow:hidden;
-  box-shadow:0 0 24px rgba(255,255,255,0.14);
+  box-shadow:0 10px 30px rgba(0,0,0,0.15);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -70,8 +66,7 @@ body{
   width:100%;
   height:100%;
   object-fit:contain;
-  display:block;
-  background:#111;
+  background:#fff;
 }
 
 .error{
@@ -82,10 +77,9 @@ body{
   justify-content:center;
   text-align:center;
   padding:20px;
-  color:#ff8f8f;
-  background:rgba(0,0,0,0.88);
-  font-size:15px;
-  line-height:1.4;
+  color:#ff4d4d;
+  background:rgba(255,255,255,0.9);
+  font-size:14px;
 }
 
 .media-card.failed .error{
@@ -94,87 +88,66 @@ body{
 
 @media (max-width:950px){
   .media-grid{grid-template-columns:1fr}
-  .media-card{height:78vh}
-  .version-tag{
-    top:6px;
-    left:8px;
-    font-size:9px;
-  }
 }
 </style>
 </head>
+
 <body>
 
-<div class="version-tag">v1.0.0</div>
+<div class="version-tag">v1.1.0</div>
 
 <script>
 const portraitPhotos = [
   "pp1","pp2","pp3","pp4","pp5","pp6","pp7","pp8","pp9","pp10",
   "pp11","pp12","pp13","pp14","pp15","pp16","pp17","pp18","pp19","pp20",
-  "pp21","pp22","pp23","pp24","pp25","pp26","pp27","pp28"
+  "pp21","pp22","pp23","pp24","pp25","pp26","pp27","pp28","pp29","pp30",
+  "pp31","pp32","pp33","pp34","pp35","pp36"
 ];
 
 const landscapePhotos = [
   "lp1","lp2","lp3","lp4","lp5","lp6","lp7","lp8","lp9","lp10","lp11",
-  "lp12","lp13","lp14","lp15","lp16","lp17","lp18","lp19","lp20","lp21","lp22"
+  "lp12","lp13","lp14","lp15","lp16","lp17","lp18","lp19","lp20","lp21","lp22","lp23"
 ];
 
 const portraitVideos = [
   "pv1","pv2","pv3","pv4","pv5","pv6","pv7","pv8","pv9","pv10",
-  "pv11","pv12","pv13","pv14","pv15","pv16","pv17","pv18"
+  "pv11","pv12","pv13","pv14","pv15","pv16","pv17","pv18","pv19"
 ];
 
-const landscapeVideos = ["lv1","lv2","lv3"];
+const landscapeVideos = ["lv1","lv2","lv3","lv4","lv5"];
 
 const imageExts = [".jpg",".jpeg",".JPG",".JPEG"];
 const videoExts = [".mp4",".MP4",".mov",".MOV"];
 
-function shuffle(array){
-  const arr = [...array];
-  for(let i = arr.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+function shuffle(arr){
+  return arr.sort(() => Math.random() - 0.5);
 }
 
 function loadImage(img, base){
   let i = 0;
-  function next(){
+  function tryNext(){
     if(i >= imageExts.length){
-      img.style.display = "none";
+      img.style.display="none";
       return;
     }
     img.src = base + imageExts[i++];
   }
-  img.onerror = next;
-  next();
+  img.onerror = tryNext;
+  tryNext();
 }
 
 function setupVideo(video, card, base){
   let i = 0;
-  let working = false;
-
-  function next(){
+  function tryNext(){
     if(i >= videoExts.length){
       card.classList.add("failed");
       return;
     }
-    const src = base + videoExts[i++];
-    video.src = src;
+    video.src = base + videoExts[i++];
     video.load();
   }
-
-  video.addEventListener("loadeddata", () => {
-    working = true;
-    card.classList.remove("failed");
-  });
-
-  video.addEventListener("error", () => {
-    if(!working) next();
-  });
-
-  next();
+  video.onerror = tryNext;
+  tryNext();
 }
 
 const photos = shuffle([
@@ -187,32 +160,21 @@ const videos = shuffle([
   ...landscapeVideos.map(x => ({type:"video", base:x}))
 ]);
 
-function buildMixedSections(photos, videos){
+function buildSections(){
   const sections = [];
-  let photoIndex = 0;
-  let videoIndex = 0;
+  let p = 0, v = 0;
 
-  while(photoIndex < photos.length || videoIndex < videos.length){
+  while(p < photos.length || v < videos.length){
     const section = [];
 
-    if(videoIndex < videos.length){
-      section.push(videos[videoIndex++]);
+    if(v < videos.length) section.push(videos[v++]);
+
+    while(section.length < 3 && p < photos.length){
+      section.push(photos[p++]);
     }
 
-    while(section.length < 3 && photoIndex < photos.length){
-      section.push(photos[photoIndex++]);
-    }
-
-    while(section.length < 3 && videoIndex < videos.length && !section.some(item => item.type === "video")){
-      section.push(videos[videoIndex++]);
-    }
-
-    while(section.length < 3 && photoIndex < photos.length){
-      section.push(photos[photoIndex++]);
-    }
-
-    while(section.length < 3 && videoIndex < videos.length){
-      section.push(videos[videoIndex++]);
+    while(section.length < 3 && v < videos.length && !section.some(x=>x.type==="video")){
+      section.push(videos[v++]);
     }
 
     sections.push(shuffle(section));
@@ -221,170 +183,118 @@ function buildMixedSections(photos, videos){
   return sections;
 }
 
-const groups = buildMixedSections(photos, videos);
-const body = document.body;
+const groups = buildSections();
 
-groups.forEach(group => {
+groups.forEach(group=>{
   const section = document.createElement("section");
   section.className = "section";
 
   const grid = document.createElement("div");
   grid.className = "media-grid";
 
-  group.forEach(item => {
+  group.forEach(item=>{
     const card = document.createElement("div");
     card.className = "media-card";
 
-    if(item.type === "image"){
+    if(item.type==="image"){
       const img = document.createElement("img");
-      img.alt = item.base;
-      loadImage(img, item.base);
+      loadImage(img,item.base);
       card.appendChild(img);
     } else {
       const video = document.createElement("video");
       video.muted = true;
       video.loop = true;
-      video.autoplay = false;
       video.playsInline = true;
       video.controls = true;
       video.preload = "metadata";
 
-      const error = document.createElement("div");
-      error.className = "error";
-      error.textContent = item.base + " could not be decoded by this browser.";
+      const err = document.createElement("div");
+      err.className="error";
+      err.textContent=item.base+" failed to load";
 
-      setupVideo(video, card, item.base);
+      setupVideo(video,card,item.base);
 
       card.appendChild(video);
-      card.appendChild(error);
+      card.appendChild(err);
     }
 
     grid.appendChild(card);
   });
 
   section.appendChild(grid);
-  body.appendChild(section);
+  document.body.appendChild(section);
 });
 
-const sections = Array.from(document.querySelectorAll(".section"));
+const sections = [...document.querySelectorAll(".section")];
 
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    const videos = entry.target.querySelectorAll("video");
+const observer = new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    const vids = entry.target.querySelectorAll("video");
 
     if(entry.isIntersecting){
       entry.target.classList.add("active");
-      videos.forEach(v => {
-        const p = v.play();
-        if(p) p.catch(() => {});
-      });
+      vids.forEach(v=>v.play().catch(()=>{}));
     } else {
       entry.target.classList.remove("active");
-      videos.forEach(v => {
+      vids.forEach(v=>{
         v.pause();
-        v.currentTime = 0;
+        v.currentTime=0;
       });
     }
   });
-}, { threshold: 0.72 });
+},{threshold:0.7});
 
-sections.forEach(s => observer.observe(s));
+sections.forEach(s=>observer.observe(s));
 
-let currentSectionIndex = 0;
-let isScrolling = false;
-let touchStartY = 0;
-const scrollLockMs = 900;
+let index = 0;
+let locked = false;
 
-function goToSection(index){
-  const clamped = Math.max(0, Math.min(index, sections.length - 1));
-  currentSectionIndex = clamped;
-  isScrolling = true;
+function go(i){
+  index = Math.max(0,Math.min(i,sections.length-1));
+  locked = true;
 
-  sections[clamped].scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
+  sections[index].scrollIntoView({behavior:"smooth"});
 
-  setTimeout(() => {
-    isScrolling = false;
-  }, scrollLockMs);
+  setTimeout(()=>locked=false,900);
 }
 
-window.addEventListener("wheel", (e) => {
+window.addEventListener("wheel",e=>{
   e.preventDefault();
+  if(locked) return;
 
-  if(isScrolling) return;
+  if(e.deltaY>0) go(index+1);
+  else go(index-1);
+},{passive:false});
 
-  if(e.deltaY > 10 && currentSectionIndex < sections.length - 1){
-    goToSection(currentSectionIndex + 1);
-  } else if(e.deltaY < -10 && currentSectionIndex > 0){
-    goToSection(currentSectionIndex - 1);
-  }
-}, { passive: false });
+window.addEventListener("keydown",e=>{
+  if(locked) return;
 
-window.addEventListener("keydown", (e) => {
-  if(isScrolling) return;
-
-  if((e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ")) {
+  if(e.key==="ArrowDown"||e.key===" "){
     e.preventDefault();
-    if(currentSectionIndex < sections.length - 1){
-      goToSection(currentSectionIndex + 1);
-    }
+    go(index+1);
   }
-
-  if(e.key === "ArrowUp" || e.key === "PageUp"){
+  if(e.key==="ArrowUp"){
     e.preventDefault();
-    if(currentSectionIndex > 0){
-      goToSection(currentSectionIndex - 1);
-    }
-  }
-
-  if(e.key === "Home"){
-    e.preventDefault();
-    goToSection(0);
-  }
-
-  if(e.key === "End"){
-    e.preventDefault();
-    goToSection(sections.length - 1);
+    go(index-1);
   }
 });
 
-window.addEventListener("touchstart", (e) => {
-  touchStartY = e.changedTouches[0].clientY;
-}, { passive: true });
+let startY=0;
 
-window.addEventListener("touchend", (e) => {
-  if(isScrolling) return;
+window.addEventListener("touchstart",e=>{
+  startY=e.touches[0].clientY;
+});
 
-  const touchEndY = e.changedTouches[0].clientY;
-  const diff = touchStartY - touchEndY;
+window.addEventListener("touchend",e=>{
+  if(locked) return;
 
-  if(Math.abs(diff) < 50) return;
+  const diff=startY-e.changedTouches[0].clientY;
 
-  if(diff > 0 && currentSectionIndex < sections.length - 1){
-    goToSection(currentSectionIndex + 1);
-  } else if(diff < 0 && currentSectionIndex > 0){
-    goToSection(currentSectionIndex - 1);
-  }
-}, { passive: true });
+  if(Math.abs(diff)<50) return;
 
-window.addEventListener("scroll", () => {
-  if(isScrolling) return;
-
-  let bestIndex = 0;
-  let bestDistance = Infinity;
-
-  sections.forEach((section, index) => {
-    const distance = Math.abs(section.getBoundingClientRect().top);
-    if(distance < bestDistance){
-      bestDistance = distance;
-      bestIndex = index;
-    }
-  });
-
-  currentSectionIndex = bestIndex;
-}, { passive: true });
+  if(diff>0) go(index+1);
+  else go(index-1);
+});
 </script>
 
 </body>
